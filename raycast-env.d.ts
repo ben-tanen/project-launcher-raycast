@@ -14,7 +14,10 @@ declare type Preferences = ExtensionPreferences
 
 declare namespace Preferences {
   /** Preferences accessible in the `open-project` command */
-  export type OpenProject = ExtensionPreferences & {}
+  export type OpenProject = ExtensionPreferences & {
+  /** Config Editor - Command used to open the config file (e.g. subl, code, nano, open) */
+  "configEditor": string
+}
 }
 
 declare namespace Arguments {

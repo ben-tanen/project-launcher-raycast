@@ -15,7 +15,17 @@
       "name": "open-project",
       "title": "Open Project",
       "description": "Browse and open configured project folders",
-      "mode": "view"
+      "mode": "view",
+      "preferences": [
+        {
+          "name": "configEditor",
+          "title": "Config Editor",
+          "description": "Command used to open the config file (e.g. subl, code, nano, open)",
+          "type": "textfield",
+          "required": false,
+          "default": "open"
+        }
+      ]
     }
   ],
   "dependencies": {

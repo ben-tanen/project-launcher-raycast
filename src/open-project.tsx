@@ -3,6 +3,7 @@ import {
   ActionPanel,
   closeMainWindow,
   Form,
+  getPreferenceValues,
   Icon,
   List,
   open,
@@ -52,11 +53,15 @@ export default function Command() {
                 title="Open Config"
                 icon={Icon.Gear}
                 shortcut={{ modifiers: ["cmd", "shift"], key: "," }}
-                onAction={() => execFile("/bin/zsh", ["-l", "-c", `subl "${getConfigPath()}"`], (error, stdout, stderr) => {
+                onAction={() => {
+                  const { configEditor } = getPreferenceValues<{ configEditor: string }>();
+                  const editor = configEditor || "open";
+                  execFile("/bin/zsh", ["-l", "-c", `${editor} "${getConfigPath()}"`], (error, stdout, stderr) => {
                     if (error) {
                       showToast({ style: Toast.Style.Failure, title: "Error", message: `${error.message} | stderr: ${stderr}` });
                     }
-                  })}
+                  });
+                }}
               />
             </ActionPanel>
           }
