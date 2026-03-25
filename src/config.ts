@@ -25,12 +25,20 @@ export interface StringParam {
 
 export type ActionParam = BoolParam | StringParam;
 
+export interface ShowWhen {
+  attributeSet?: string;
+  attributeNotSet?: string;
+  attributeEquals?: { key: string; value: string };
+  attributeNotEquals?: { key: string; value: string };
+}
+
 export interface ProjectAction {
   name: string;
   command: string;
   icon?: string;
   terminal?: boolean;
   params?: ActionParam[];
+  showWhen?: ShowWhen;
 }
 
 export function resolveCommand(command: string, paramValues: Record<string, string | boolean>, params: ActionParam[]): string {
@@ -58,11 +66,30 @@ export function resolveCommand(command: string, paramValues: Record<string, stri
   return resolved.replace(/\s{2,}/g, " ").trim();
 }
 
+export function resolveAttributes(command: string, attributes: Record<string, string>): string {
+  return command.replace(/\{\{attr\.(\w+)\}\}/g, (_, key) => attributes[key] || "");
+}
+
+export function shouldShowAction(action: ProjectAction, project: Project): boolean {
+  const cond = action.showWhen;
+  if (!cond) return true;
+
+  const attrs = project.attributes || {};
+
+  if (cond.attributeSet && !attrs[cond.attributeSet]) return false;
+  if (cond.attributeNotSet && attrs[cond.attributeNotSet]) return false;
+  if (cond.attributeEquals && attrs[cond.attributeEquals.key] !== cond.attributeEquals.value) return false;
+  if (cond.attributeNotEquals && attrs[cond.attributeNotEquals.key] === cond.attributeNotEquals.value) return false;
+
+  return true;
+}
+
 export interface Project {
   id: string;
   name: string;
   path: string;
   icon?: string;
+  attributes?: Record<string, string>;
   actions?: ProjectAction[];
 }
 
@@ -93,6 +120,7 @@ const DEFAULT_CONFIG: Config = {
         { id: "use_git_worktree", name: "Use Git Worktree?", type: "bool", flag: "-w" },
       ],
     },
+    { name: "Open in GitHub", command: "open {{attr.repo}}", icon: "🔗", showWhen: { attributeSet: "repo" } },
     { name: "Open in Finder", command: "open .", icon: "📁" },
     { name: "Open in Terminal", command: "open -a iTerm .", icon: "🖥️" },
   ],

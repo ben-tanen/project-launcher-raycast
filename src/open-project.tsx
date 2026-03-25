@@ -15,8 +15,10 @@ import { exec, execFile } from "child_process";
 import fs from "fs";
 import {
   loadConfig,
+  resolveAttributes,
   resolveCommand,
   resolveProjectPath,
+  shouldShowAction,
   sortProjectsByRecency,
   touchProject,
   getConfigPath,
@@ -75,23 +77,26 @@ function ProjectActions({ project }: { project: Project }) {
   const config = loadConfig();
   const resolvedPath = resolveProjectPath(project.path);
 
-  const projectActions = project.actions || [];
-  const globalActions = config.globalActions;
+  const projectActions = (project.actions || []).filter((a) => shouldShowAction(a, project));
+  const globalActions = config.globalActions.filter((a) => shouldShowAction(a, project));
+  const attrs = project.attributes || {};
 
   return (
     <List searchBarPlaceholder={`Actions for ${project.name}...`}>
       {projectActions.length > 0 && (
         <List.Section title="Project Actions">
           {projectActions.map((action, idx) => (
-            <ActionItem key={`project-${idx}`} action={action} cwd={resolvedPath} projectId={project.id} />
+            <ActionItem key={`project-${idx}`} action={action} cwd={resolvedPath} projectId={project.id} attributes={attrs} />
           ))}
         </List.Section>
       )}
-      <List.Section title="Global Actions">
-        {globalActions.map((action, idx) => (
-          <ActionItem key={`global-${idx}`} action={action} cwd={resolvedPath} projectId={project.id} />
-        ))}
-      </List.Section>
+      {globalActions.length > 0 && (
+        <List.Section title="Global Actions">
+          {globalActions.map((action, idx) => (
+            <ActionItem key={`global-${idx}`} action={action} cwd={resolvedPath} projectId={project.id} attributes={attrs} />
+          ))}
+        </List.Section>
+      )}
     </List>
   );
 }
@@ -112,21 +117,23 @@ function hasUnfilledRequired(params: ActionParam[]): boolean {
   return params.some((p) => p.type === "string" && p.required && !p.default);
 }
 
-function ActionItem({ action, cwd, projectId }: { action: ProjectAction; cwd: string; projectId: string }) {
+function ActionItem({ action, cwd, projectId, attributes }: { action: ProjectAction; cwd: string; projectId: string; attributes: Record<string, string> }) {
   const hasParams = action.params && action.params.length > 0;
   const canRunDefaults = hasParams && !hasUnfilledRequired(action.params || []);
+
+  const resolve = (cmd: string) => resolveAttributes(cmd, attributes);
 
   const runWithDefaults = () => {
     touchProject(projectId);
     const defaults = getDefaultParamValues(action.params || []);
-    const resolved = resolveCommand(action.command, defaults, action.params || []);
+    const resolved = resolve(resolveCommand(action.command, defaults, action.params || []));
     runCommand(action.name, resolved, cwd, action.terminal);
   };
 
   return (
     <List.Item
       title={action.name}
-      subtitle={action.command}
+      subtitle={resolve(action.command)}
       icon={action.icon || Icon.Terminal}
       actions={
         <ActionPanel>
@@ -143,14 +150,14 @@ function ActionItem({ action, cwd, projectId }: { action: ProjectAction; cwd: st
                     title="Configure & Run"
                     icon={Icon.Gear}
                     shortcut={{ modifiers: ["cmd"], key: "return" }}
-                    target={<ParamForm action={action} cwd={cwd} projectId={projectId} />}
+                    target={<ParamForm action={action} cwd={cwd} projectId={projectId} attributes={attributes} />}
                   />
                 </>
               ) : (
                 <Action.Push
                   title="Configure & Run"
                   icon={Icon.Play}
-                  target={<ParamForm action={action} cwd={cwd} projectId={projectId} />}
+                  target={<ParamForm action={action} cwd={cwd} projectId={projectId} attributes={attributes} />}
                 />
               )}
             </>
@@ -160,13 +167,13 @@ function ActionItem({ action, cwd, projectId }: { action: ProjectAction; cwd: st
               icon={Icon.Play}
               onAction={() => {
                 touchProject(projectId);
-                runCommand(action.name, action.command, cwd, action.terminal);
+                runCommand(action.name, resolve(action.command), cwd, action.terminal);
               }}
             />
           )}
           <Action.CopyToClipboard
             title="Copy Command"
-            content={`cd "${cwd}" && ${action.command}`}
+            content={`cd "${cwd}" && ${resolve(action.command)}`}
             shortcut={{ modifiers: ["cmd"], key: "c" }}
           />
         </ActionPanel>
@@ -175,7 +182,7 @@ function ActionItem({ action, cwd, projectId }: { action: ProjectAction; cwd: st
   );
 }
 
-function ParamForm({ action, cwd, projectId }: { action: ProjectAction; cwd: string; projectId: string }) {
+function ParamForm({ action, cwd, projectId, attributes }: { action: ProjectAction; cwd: string; projectId: string; attributes: Record<string, string> }) {
   const params = action.params || [];
   const requiredIds = new Set(params.filter((p) => p.type === "string" && p.required).map((p) => p.id));
 
@@ -196,7 +203,7 @@ function ParamForm({ action, cwd, projectId }: { action: ProjectAction; cwd: str
                 }
               }
               touchProject(projectId);
-              const resolved = resolveCommand(action.command, values, params);
+              const resolved = resolveAttributes(resolveCommand(action.command, values, params), attributes);
               runCommand(action.name, resolved, cwd, action.terminal);
             }}
           />
