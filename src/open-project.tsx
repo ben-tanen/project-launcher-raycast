@@ -13,6 +13,7 @@ import {
 } from "@raycast/api";
 import { exec, execFile } from "child_process";
 import fs from "fs";
+import { useState } from "react";
 import {
   loadConfig,
   resolveAttributes,
@@ -36,9 +37,30 @@ export default function Command() {
   const config = loadConfig();
   const sortedProjects = sortProjectsByRecency(config.projects);
 
+  const allTags = [...new Set(config.projects.flatMap((p) => p.tags || []))].sort();
+  const [selectedTag, setSelectedTag] = useState<string>("all");
+
+  const filteredProjects = selectedTag === "all"
+    ? sortedProjects
+    : sortedProjects.filter((p) => p.tags?.includes(selectedTag));
+
   return (
-    <List searchBarPlaceholder="Search projects...">
-      {sortedProjects.map((project) => (
+    <List
+      searchBarPlaceholder="Search projects..."
+      searchBarAccessory={
+        allTags.length > 0 ? (
+          <List.Dropdown tooltip="Filter by Tag" storeValue onChange={setSelectedTag}>
+            <List.Dropdown.Item title="All" value="all" />
+            <List.Dropdown.Section>
+              {allTags.map((tag) => (
+                <List.Dropdown.Item key={tag} title={tag} value={tag} />
+              ))}
+            </List.Dropdown.Section>
+          </List.Dropdown>
+        ) : undefined
+      }
+    >
+      {filteredProjects.map((project) => (
         <List.Item
           key={project.id}
           title={project.name}

@@ -59,7 +59,7 @@ export function resolveCommand(command: string, paramValues: Record<string, stri
       }
     }
 
-    resolved = resolved.replace(placeholder, replacement);
+    resolved = resolved.replaceAll(placeholder, replacement);
   }
 
   // collapse multiple spaces into one and trim
@@ -89,6 +89,7 @@ export interface Project {
   name: string;
   path: string;
   icon?: string;
+  tags?: string[];
   attributes?: Record<string, string>;
   actions?: ProjectAction[];
 }
