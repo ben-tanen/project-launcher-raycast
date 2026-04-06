@@ -33,6 +33,25 @@ function log(msg: string) {
   fs.appendFileSync(LOG_FILE, `${new Date().toISOString()} ${msg}\n`);
 }
 
+function OpenConfigAction() {
+  return (
+    <Action
+      title="Open Config"
+      icon={Icon.Gear}
+      shortcut={{ modifiers: ["cmd", "shift"], key: "," }}
+      onAction={() => {
+        const { configEditor } = getPreferenceValues<{ configEditor: string }>();
+        const editor = configEditor || "open";
+        execFile("/bin/zsh", ["-l", "-c", `${editor} "${getConfigPath()}"`], (error, stdout, stderr) => {
+          if (error) {
+            showToast({ style: Toast.Style.Failure, title: "Error", message: `${error.message} | stderr: ${stderr}` });
+          }
+        });
+      }}
+    />
+  );
+}
+
 export default function Command() {
   const config = loadConfig();
   const sortedProjects = sortProjectsByRecency(config.projects);
@@ -73,20 +92,7 @@ export default function Command() {
                 icon={Icon.ArrowRight}
                 target={<ProjectActions project={project} />}
               />
-              <Action
-                title="Open Config"
-                icon={Icon.Gear}
-                shortcut={{ modifiers: ["cmd", "shift"], key: "," }}
-                onAction={() => {
-                  const { configEditor } = getPreferenceValues<{ configEditor: string }>();
-                  const editor = configEditor || "open";
-                  execFile("/bin/zsh", ["-l", "-c", `${editor} "${getConfigPath()}"`], (error, stdout, stderr) => {
-                    if (error) {
-                      showToast({ style: Toast.Style.Failure, title: "Error", message: `${error.message} | stderr: ${stderr}` });
-                    }
-                  });
-                }}
-              />
+              <OpenConfigAction />
             </ActionPanel>
           }
         />
@@ -195,9 +201,10 @@ function ActionItem({ action, cwd, projectId, attributes }: { action: ProjectAct
           )}
           <Action.CopyToClipboard
             title="Copy Command"
-            content={`cd "${cwd}" && ${resolve(action.command)}`}
+            content={`cd "${cwd}" && ${resolve(resolveCommand(action.command, getDefaultParamValues(action.params || []), action.params || []))}`}
             shortcut={{ modifiers: ["cmd"], key: "c" }}
           />
+          <OpenConfigAction />
         </ActionPanel>
       }
     />
@@ -229,6 +236,7 @@ function ParamForm({ action, cwd, projectId, attributes }: { action: ProjectActi
               runCommand(action.name, resolved, cwd, action.terminal);
             }}
           />
+          <OpenConfigAction />
         </ActionPanel>
       }
     >
