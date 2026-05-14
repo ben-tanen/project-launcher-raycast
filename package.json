@@ -42,8 +42,8 @@
     "typescript": "^5.8.2"
   },
   "scripts": {
-    "build": "ray build",
-    "dev": "ray develop",
+    "build": "RAY_Target=x ray build",
+    "dev": "RAY_Target=x ray develop",
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
     "prepublishOnly": "echo \"Error: no publish\" && exit 1",
